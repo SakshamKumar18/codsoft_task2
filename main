@@ -1,0 +1,1795 @@
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import {
+  LayoutDashboard, Briefcase, Users, ScanSearch, CalendarDays, BarChart3,
+  Sparkles, Settings, Upload, Search, ChevronRight, ChevronLeft, X, Check,
+  AlertTriangle, Filter, Plus, Send, ArrowUpRight, GraduationCap, Award,
+  MapPin, Mail, Phone, Building2, Clock, FileText, ArrowRight, Loader2,
+  ShieldCheck, Eye, EyeOff, Sparkle, TrendingUp, ChevronDown, Star,
+  CheckCircle2, XCircle, MinusCircle, Bot, User, Layers, Zap, AlertCircle,
+  RefreshCw
+} from "lucide-react";
+import * as mammoth from "mammoth";
+
+/* ============================== TOKENS ============================== */
+const C = {
+  bg: "#0A0E17",
+  surface: "#121A2B",
+  raised: "#1A2338",
+  raised2: "#212B42",
+  border: "#262F47",
+  borderSoft: "#1E2740",
+  text: "#E9EDF6",
+  muted: "#8C97AF",
+  faint: "#5C6884",
+  violet: "#7C6FF0",
+  violetSoft: "#A79BFF",
+  emerald: "#34D399",
+  amber: "#F5B84C",
+  rose: "#F0678A",
+  blue: "#5B9DFF",
+};
+
+const FontImport = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    .tl-root, .tl-root * { font-family: 'Inter', ui-sans-serif, sans-serif; box-sizing: border-box; }
+    .tl-display { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+    .tl-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .tl-root ::-webkit-scrollbar { width: 8px; height: 8px; }
+    .tl-root ::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 8px; }
+    .tl-root ::-webkit-scrollbar-track { background: transparent; }
+    @keyframes tlPulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+    @keyframes tlScan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+    @keyframes tlFadeUp { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+    @keyframes tlSpin { to { transform: rotate(360deg); } }
+    @keyframes tlDash { from { stroke-dashoffset: var(--dash-start); } to { stroke-dashoffset: var(--dash-end); } }
+    .tl-fade-up { animation: tlFadeUp .35s ease both; }
+    .tl-focus:focus-visible { outline: 2px solid ${C.violetSoft}; outline-offset: 2px; }
+  `}</style>
+);
+
+/* ============================== MOCK DATA ============================== */
+
+const JOBS = [
+  {
+    id: "job-1",
+    title: "Senior Machine Learning Engineer",
+    dept: "Engineering",
+    location: "Remote (US)",
+    type: "Full-time",
+    status: "Open",
+    seniority: "Senior",
+    createdAt: "Jul 28, 2026",
+    minExperience: 5,
+    education: "MS/PhD preferred, BS considered with strong project record",
+    requiredSkills: ["Python", "PyTorch or TensorFlow", "Machine Learning", "AWS", "SQL", "Distributed Systems"],
+    preferredSkills: ["Kubernetes", "MLOps", "NLP", "Docker"],
+    responsibilities: [
+      "Design and ship production ML systems end-to-end",
+      "Own model training, evaluation, and deployment pipelines",
+      "Partner with product on applied ML use cases",
+      "Mentor engineers on ML best practices",
+    ],
+    keywords: ["deep learning", "model deployment", "feature engineering", "vector search"],
+    candidateCount: 8,
+    avgScore: 76,
+  },
+  {
+    id: "job-2",
+    title: "Senior Backend Engineer",
+    dept: "Engineering",
+    location: "New York, NY (Hybrid)",
+    type: "Full-time",
+    status: "Open",
+    seniority: "Senior",
+    createdAt: "Aug 2, 2026",
+    minExperience: 5,
+    education: "BS in Computer Science or equivalent experience",
+    requiredSkills: ["Python or Go", "Distributed Systems", "SQL", "AWS", "API Design"],
+    preferredSkills: ["Kafka", "Kubernetes", "gRPC"],
+    responsibilities: [
+      "Build resilient, high-throughput backend services",
+      "Improve system reliability and observability",
+      "Design APIs consumed by internal and external teams",
+    ],
+    keywords: ["microservices", "scalability", "system design"],
+    candidateCount: 5,
+    avgScore: 71,
+  },
+];
+
+const INITIAL_CANDIDATES = [
+  {
+    id: "c1", name: "Sarah Johnson", role: "Senior Software Engineer", company: "Stripe",
+    location: "Austin, TX", experience: 7, jobId: "job-1", status: "Shortlisted",
+    dateAdded: "Aug 5, 2026", score: 94, recommendation: "Strongly Recommend", aiVerdict: "Strong Hire",
+    email: "sarah.johnson@email.com", phone: "(512) 555-0142",
+    education: [{ degree: "M.S. Computer Science", school: "University of Texas at Austin", year: "2019" }],
+    certifications: ["AWS Certified Solutions Architect – Professional"],
+    skillsMatched: ["Python", "AWS", "Distributed Systems", "PyTorch", "SQL"],
+    skillsPartial: ["MLOps"],
+    skillsMissing: ["NLP"],
+    breakdown: { skill: 96, experience: 98, responsibility: 92, education: 100, preferred: 80, seniority: 95 },
+    strengths: [
+      "7 years building and shipping production ML infrastructure at scale",
+      "Led migration of Stripe's fraud-detection models to a real-time PyTorch pipeline",
+      "Deep hands-on distributed systems experience matching core job requirements",
+    ],
+    gaps: [
+      "No explicit NLP project experience in resume",
+      "MLOps tooling exposure is present but not deeply demonstrated",
+    ],
+    timeline: [
+      { title: "Senior Software Engineer", company: "Stripe", dates: "2022 — Present", desc: "Leads the ML infrastructure team building real-time fraud detection models serving 40M+ requests/day." },
+      { title: "Software Engineer II", company: "Datadog", dates: "2019 — 2022", desc: "Built distributed data pipelines and internal ML tooling for anomaly detection." },
+      { title: "Software Engineer Intern", company: "IBM Research", dates: "2018", desc: "Prototyped early NLP classification models for support-ticket routing." },
+    ],
+    summary: "Sarah is a senior engineer with 7 years of hands-on experience shipping production ML systems, most recently leading real-time fraud-detection infrastructure at Stripe. Her background in distributed systems and PyTorch aligns closely with the core requirements of this role, and her AWS certification reinforces strong cloud fluency.",
+    interviewQuestions: [
+      "Walk us through how you productionized the real-time fraud-detection pipeline at Stripe — what were the biggest latency challenges?",
+      "Your resume shows deep distributed-systems work but limited NLP exposure. How would you ramp up on our NLP-heavy roadmap items?",
+      "Describe a time you had to convince a team to adopt a new MLOps practice. What was the outcome?",
+    ],
+  },
+  {
+    id: "c2", name: "Michael Chen", role: "Software Engineer", company: "Meta",
+    location: "Menlo Park, CA", experience: 5, jobId: "job-1", status: "Screening",
+    dateAdded: "Aug 6, 2026", score: 88, recommendation: "Recommend", aiVerdict: "Hire",
+    email: "michael.chen@email.com", phone: "(650) 555-0198",
+    education: [{ degree: "B.S. Computer Science", school: "UC Berkeley", year: "2020" }],
+    certifications: [],
+    skillsMatched: ["Python", "AWS", "SQL", "PyTorch"],
+    skillsPartial: ["Distributed Systems"],
+    skillsMissing: ["Kubernetes", "NLP"],
+    breakdown: { skill: 88, experience: 84, responsibility: 80, education: 90, preferred: 55, seniority: 82 },
+    strengths: [
+      "Solid 5-year track record building ML-adjacent recommendation features at Meta",
+      "Strong Python and PyTorch fundamentals with recent production experience",
+    ],
+    gaps: [
+      "Distributed-systems exposure is present but scoped to a single team's services",
+      "No Kubernetes experience listed",
+    ],
+    timeline: [
+      { title: "Software Engineer", company: "Meta", dates: "2021 — Present", desc: "Builds ranking features for the Feed recommendation system using PyTorch models." },
+      { title: "Software Engineer", company: "Cruise", dates: "2020 — 2021", desc: "Worked on perception data pipelines for autonomous vehicle sensor logs." },
+    ],
+    summary: "Michael brings 5 years of applied ML engineering experience, most recently on Meta's Feed ranking team. His Python and PyTorch skills are strong and directly relevant, though his distributed-systems and infrastructure exposure is narrower than the role's ideal profile.",
+    interviewQuestions: [
+      "Tell us about the ranking model you built at Meta — how did you evaluate its impact?",
+      "Have you worked with container orchestration like Kubernetes? If not, how comfortable are you picking it up quickly?",
+    ],
+  },
+  {
+    id: "c3", name: "Priya Sharma", role: "ML Engineer", company: "Nimbus Analytics (startup)",
+    location: "Seattle, WA", experience: 4, jobId: "job-1", status: "New",
+    dateAdded: "Aug 9, 2026", score: 76, recommendation: "Review", aiVerdict: "Consider",
+    email: "priya.sharma@email.com", phone: "(206) 555-0117",
+    education: [{ degree: "M.S. Data Science", school: "University of Washington", year: "2022" }],
+    certifications: ["TensorFlow Developer Certificate"],
+    skillsMatched: ["Python", "PyTorch", "Machine Learning", "NLP"],
+    skillsPartial: ["AWS"],
+    skillsMissing: ["Distributed Systems", "Kubernetes"],
+    breakdown: { skill: 82, experience: 62, responsibility: 74, education: 92, preferred: 70, seniority: 55 },
+    strengths: [
+      "Direct, hands-on NLP experience — a preferred skill most other candidates lack",
+      "Strong academic ML foundation reinforced by a TensorFlow certification",
+    ],
+    gaps: [
+      "4 years of experience is below the role's 5-year minimum",
+      "Startup-scale systems experience; limited exposure to large distributed infrastructure",
+    ],
+    timeline: [
+      { title: "ML Engineer", company: "Nimbus Analytics", dates: "2022 — Present", desc: "Built NLP models for document classification and a customer-support triage system." },
+      { title: "Data Science Intern", company: "Boeing", dates: "2021", desc: "Built demand-forecasting models for supply chain planning." },
+    ],
+    summary: "Priya is an ML engineer with strong NLP and applied machine-learning skills, but her overall experience is below the role's stated minimum and her infrastructure exposure is limited to smaller-scale startup systems.",
+    interviewQuestions: [
+      "The role calls for 5+ years — walk us through the scope and complexity of the systems you've owned in your 4 years so far.",
+      "Describe the NLP triage system you built. How did you handle scaling it as usage grew?",
+    ],
+  },
+  {
+    id: "c4", name: "Daniel Williams", role: "Backend Engineer", company: "Shopify",
+    location: "Ottawa, ON", experience: 6, jobId: "job-1", status: "Screening",
+    dateAdded: "Aug 7, 2026", score: 71, recommendation: "Review", aiVerdict: "Consider",
+    email: "daniel.williams@email.com", phone: "(613) 555-0176",
+    education: [{ degree: "B.S. Computer Science", school: "University of Waterloo", year: "2018" }],
+    certifications: [],
+    skillsMatched: ["Python", "SQL", "AWS", "Distributed Systems"],
+    skillsPartial: ["Machine Learning"],
+    skillsMissing: ["PyTorch", "NLP"],
+    breakdown: { skill: 68, experience: 88, responsibility: 60, education: 85, preferred: 40, seniority: 88 },
+    strengths: [
+      "6 years of strong distributed-systems and backend infrastructure experience",
+      "Proven ability to operate large-scale production services",
+    ],
+    gaps: [
+      "No production ML framework experience (PyTorch/TensorFlow) found in resume",
+      "Machine-learning exposure appears limited to internal tooling, not model development",
+    ],
+    timeline: [
+      { title: "Backend Engineer", company: "Shopify", dates: "2020 — Present", desc: "Owns checkout-platform services handling millions of transactions daily." },
+      { title: "Backend Engineer", company: "RBC", dates: "2018 — 2020", desc: "Built internal fraud-rules engines (rules-based, not ML-based)." },
+    ],
+    summary: "Daniel is a strong backend and distributed-systems engineer with 6 years of experience, but his resume shows little direct machine-learning framework experience, which is a core requirement for this role.",
+    interviewQuestions: [
+      "This role is ML-heavy — what's your hands-on experience with PyTorch or TensorFlow, if any?",
+      "Tell us about the fraud-rules engine you built at RBC. Was there an opportunity to make it ML-based, and why wasn't it?",
+    ],
+  },
+  {
+    id: "c5", name: "Emily Rodriguez", role: "Data Engineer", company: "Snowflake",
+    location: "Denver, CO", experience: 5, jobId: "job-1", status: "New",
+    dateAdded: "Aug 10, 2026", score: 65, recommendation: "Review", aiVerdict: "Consider",
+    email: "emily.rodriguez@email.com", phone: "(720) 555-0134",
+    education: [{ degree: "M.S. Data Engineering", school: "Georgia Tech", year: "2020" }],
+    certifications: ["AWS Certified Data Analytics – Specialty"],
+    skillsMatched: ["Python", "SQL", "AWS"],
+    skillsPartial: ["Machine Learning"],
+    skillsMissing: ["PyTorch", "Kubernetes", "NLP", "Distributed Systems"],
+    breakdown: { skill: 58, experience: 78, responsibility: 55, education: 88, preferred: 35, seniority: 70 },
+    strengths: [
+      "Strong SQL and data-pipeline fundamentals directly useful for feature engineering",
+      "AWS specialty certification shows solid cloud data expertise",
+    ],
+    gaps: [
+      "No production model-training experience listed",
+      "Distributed-systems exposure is data-warehouse focused rather than service infrastructure",
+    ],
+    timeline: [
+      { title: "Data Engineer", company: "Snowflake", dates: "2021 — Present", desc: "Builds and maintains ETL pipelines feeding analytics and reporting warehouses." },
+      { title: "Data Engineer", company: "Cardinal Health", dates: "2020 — 2021", desc: "Maintained batch data pipelines for supply-chain reporting." },
+    ],
+    summary: "Emily has strong data-engineering fundamentals and cloud data expertise, but her resume shows limited exposure to model training or production ML frameworks, which the role requires.",
+    interviewQuestions: [
+      "How would you translate your ETL and data-pipeline background into supporting ML feature pipelines?",
+      "Have you collaborated directly with ML engineers before? What did that handoff look like?",
+    ],
+  },
+  {
+    id: "c6", name: "David Kim", role: "Full Stack Engineer", company: "Airbnb",
+    location: "San Francisco, CA", experience: 4, jobId: "job-1", status: "New",
+    dateAdded: "Aug 11, 2026", score: 58, recommendation: "Not a Fit", aiVerdict: "Reject",
+    email: "david.kim@email.com", phone: "(415) 555-0163",
+    education: [{ degree: "B.S. Computer Science", school: "UCLA", year: "2021" }],
+    certifications: [],
+    skillsMatched: ["Python", "SQL"],
+    skillsPartial: [],
+    skillsMissing: ["PyTorch", "Machine Learning", "AWS", "Distributed Systems", "NLP"],
+    breakdown: { skill: 32, experience: 55, responsibility: 40, education: 80, preferred: 20, seniority: 50 },
+    strengths: [
+      "Strong general software-engineering fundamentals",
+      "Fast shipping velocity on customer-facing features",
+    ],
+    gaps: [
+      "No machine-learning or ML-framework experience found",
+      "No distributed-systems or large-scale infrastructure work listed",
+      "Experience is concentrated in frontend/full-stack product work, not ML engineering",
+    ],
+    timeline: [
+      { title: "Full Stack Engineer", company: "Airbnb", dates: "2022 — Present", desc: "Builds guest-facing booking flows across web and mobile." },
+      { title: "Software Engineer", company: "Postmates", dates: "2021 — 2022", desc: "Built merchant-facing dashboard features." },
+    ],
+    summary: "David is a capable full-stack engineer, but his experience doesn't align with this role's core ML and infrastructure requirements — his background is concentrated in product-facing feature work.",
+    interviewQuestions: [
+      "This role centers on ML systems work — what draws you to that shift from full-stack product engineering?",
+    ],
+  },
+  {
+    id: "c7", name: "Aisha Patel", role: "Engineering Manager", company: "Google",
+    location: "Sunnyvale, CA", experience: 9, jobId: "job-1", status: "Interview",
+    dateAdded: "Aug 3, 2026", score: 90, recommendation: "Recommend", aiVerdict: "Hire",
+    email: "aisha.patel@email.com", phone: "(408) 555-0121",
+    education: [{ degree: "M.S. Computer Science", school: "Stanford University", year: "2016" }],
+    certifications: [],
+    skillsMatched: ["Python", "AWS", "Distributed Systems", "Machine Learning", "SQL"],
+    skillsPartial: ["PyTorch"],
+    skillsMissing: [],
+    breakdown: { skill: 90, experience: 100, responsibility: 88, education: 100, preferred: 75, seniority: 100 },
+    strengths: [
+      "9 years of experience including 3 years managing an applied-ML team at Google",
+      "Demonstrated technical leadership and mentorship — a strong signal for a senior role",
+      "Broad, well-rounded skill coverage across nearly every required area",
+    ],
+    gaps: [
+      "Recent role has been management-heavy; hands-on coding cadence may be lower than an IC-focused hire",
+      "PyTorch appears in older projects rather than recent, current work",
+    ],
+    timeline: [
+      { title: "Engineering Manager, ML Platform", company: "Google", dates: "2023 — Present", desc: "Leads a team of 6 building internal ML training infrastructure." },
+      { title: "Senior Software Engineer", company: "Google", dates: "2019 — 2023", desc: "Built distributed training pipelines for internal ranking models." },
+      { title: "Software Engineer", company: "Twitter", dates: "2016 — 2019", desc: "Worked on the timeline ranking and relevance team." },
+    ],
+    summary: "Aisha brings 9 years of experience, including recent engineering-management leadership over an applied-ML platform team at Google. Her technical breadth and leadership track record are strong, though recent hands-on ML coding has been lighter given her management scope.",
+    interviewQuestions: [
+      "This role is an IC role — how do you feel about stepping back from management day-to-day?",
+      "Tell us about the training infrastructure your team owns at Google. What would you build differently for a smaller company?",
+    ],
+  },
+  {
+    id: "c8", name: "James Wilson", role: "DevOps Engineer", company: "HashiCorp",
+    location: "Remote (US)", experience: 6, jobId: "job-1", status: "New",
+    dateAdded: "Aug 11, 2026", score: 68, recommendation: "Review", aiVerdict: "Consider",
+    email: "james.wilson@email.com", phone: "(303) 555-0189",
+    education: [{ degree: "B.S. Computer Science", school: "Colorado State University", year: "2018" }],
+    certifications: ["Certified Kubernetes Administrator (CKA)"],
+    skillsMatched: ["Python", "AWS", "Distributed Systems"],
+    skillsPartial: ["SQL"],
+    skillsMissing: ["PyTorch", "Machine Learning", "NLP"],
+    breakdown: { skill: 55, experience: 85, responsibility: 50, education: 78, preferred: 90, seniority: 82 },
+    strengths: [
+      "Excellent infrastructure depth — Kubernetes, AWS, and distributed systems are all strong",
+      "Certified Kubernetes Administrator directly covers the role's top preferred skill",
+    ],
+    gaps: [
+      "No ML framework or model-development experience found",
+      "Resume shows infrastructure/platform focus rather than applied ML work",
+    ],
+    timeline: [
+      { title: "DevOps Engineer", company: "HashiCorp", dates: "2021 — Present", desc: "Builds and operates Kubernetes-based deployment infrastructure for internal ML teams." },
+      { title: "Site Reliability Engineer", company: "Twilio", dates: "2018 — 2021", desc: "Owned on-call reliability for messaging infrastructure." },
+    ],
+    summary: "James has deep infrastructure and Kubernetes expertise that directly covers the role's preferred skills, but his resume shows no hands-on ML model-development experience, which is a core requirement.",
+    interviewQuestions: [
+      "You support ML teams' infrastructure at HashiCorp — how close have you gotten to the modeling work itself?",
+      "Would you be interested in moving from infra-adjacent work into hands-on model development?",
+    ],
+  },
+];
+
+const FUNNEL = [
+  { stage: "Applied", count: 412 },
+  { stage: "AI Screened", count: 380 },
+  { stage: "Shortlisted", count: 96 },
+  { stage: "Interview", count: 42 },
+  { stage: "Offer", count: 14 },
+  { stage: "Hired", count: 9 },
+];
+
+const TOP_SKILLS = [
+  { skill: "Python", pct: 74 },
+  { skill: "SQL", pct: 61 },
+  { skill: "AWS", pct: 58 },
+  { skill: "Distributed Systems", pct: 47 },
+  { skill: "PyTorch", pct: 39 },
+  { skill: "Kubernetes", pct: 33 },
+  { skill: "NLP", pct: 21 },
+];
+
+const SCORE_TREND = [72, 74, 71, 76, 79, 77, 81, 78, 83, 80, 82, 85];
+
+const NAV = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "jobs", label: "Jobs", icon: Briefcase },
+  { key: "candidates", label: "Candidates", icon: Users },
+  { key: "screening", label: "Screening", icon: ScanSearch },
+  { key: "interviews", label: "Interviews", icon: CalendarDays },
+  { key: "analytics", label: "Analytics", icon: BarChart3 },
+  { key: "assistant", label: "AI Assistant", icon: Sparkles },
+  { key: "settings", label: "Settings", icon: Settings },
+];
+
+const STATUS_STYLE = {
+  New: { bg: "rgba(91,157,255,0.14)", fg: C.blue },
+  Screening: { bg: "rgba(245,184,76,0.14)", fg: C.amber },
+  Shortlisted: { bg: "rgba(52,211,153,0.14)", fg: C.emerald },
+  Interview: { bg: "rgba(124,111,240,0.16)", fg: C.violetSoft },
+  Offer: { bg: "rgba(52,211,153,0.2)", fg: C.emerald },
+  Hired: { bg: "rgba(52,211,153,0.25)", fg: C.emerald },
+  Rejected: { bg: "rgba(240,103,138,0.14)", fg: C.rose },
+};
+
+const REC_STYLE = {
+  "Strongly Recommend": C.emerald,
+  Recommend: C.blue,
+  Review: C.amber,
+  "Not a Fit": C.rose,
+};
+
+/* ============================== AI / API LAYER ============================== */
+
+const AI_MODEL = "claude-sonnet-4-6";
+
+async function callClaude({ system, messages, max_tokens = 1200 }) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: AI_MODEL, max_tokens, system, messages }),
+  });
+  if (!response.ok) {
+    throw new Error(`AI request failed (${response.status})`);
+  }
+  const data = await response.json();
+  const text = (data.content || [])
+    .map((block) => (block.type === "text" ? block.text : ""))
+    .filter(Boolean)
+    .join("\n");
+  return text;
+}
+
+function extractJson(text) {
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1) throw new Error("No JSON object found in AI response");
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+// Read a file into either { kind: "text", text } or { kind: "pdf", base64 }
+async function readFileForAI(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".pdf")) {
+    const base64 = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result.split(",")[1]);
+      r.onerror = () => reject(new Error("Could not read PDF file"));
+      r.readAsDataURL(file);
+    });
+    return { kind: "pdf", base64 };
+  }
+  if (name.endsWith(".docx")) {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return { kind: "text", text: result.value };
+  }
+  // .txt, .rtf, or anything else — read as plain text
+  const text = await file.text();
+  return { kind: "text", text };
+}
+
+const CANDIDATE_JSON_SCHEMA = `{
+  "name": string,
+  "role": string,               // candidate's current or most recent job title
+  "company": string,            // candidate's current or most recent employer
+  "location": string,
+  "experience": number,         // total years of relevant professional experience, integer
+  "email": string,              // best guess or "" if not present in resume
+  "phone": string,              // best guess or "" if not present in resume
+  "education": [{ "degree": string, "school": string, "year": string }],
+  "certifications": [string],
+  "skillsMatched": [string],    // required/preferred skills clearly demonstrated in the resume
+  "skillsPartial": [string],    // skills that are somewhat but not strongly demonstrated
+  "skillsMissing": [string],    // required skills from the job that are absent from the resume
+  "breakdown": {
+    "skill": number,            // 0-100, match on required skills
+    "experience": number,       // 0-100, years & relevance of experience
+    "responsibility": number,   // 0-100, overlap with job responsibilities
+    "education": number,        // 0-100, education fit
+    "preferred": number,        // 0-100, preferred/nice-to-have skills coverage
+    "seniority": number         // 0-100, seniority level fit
+  },
+  "score": number,               // 0-100 overall weighted match score
+  "recommendation": "Strongly Recommend" | "Recommend" | "Review" | "Not a Fit",
+  "aiVerdict": "Strong Hire" | "Hire" | "Consider" | "Reject",
+  "strengths": [string],         // 2-4 concise bullets, specific to this resume
+  "gaps": [string],              // 1-3 concise bullets, specific to this resume
+  "timeline": [{ "title": string, "company": string, "dates": string, "desc": string }],
+  "summary": string,             // 2-3 sentence overview referencing specifics from the resume
+  "interviewQuestions": [string] // 2-4 tailored, specific interview questions
+}`;
+
+function buildScreeningSystemPrompt(job) {
+  return `You are an expert, unbiased technical recruiter AI performing resume screening for TalentLens AI, an applicant tracking system.
+
+You will be given a job's requirements and a single candidate's resume. Read the resume carefully and produce a structured evaluation of how well this candidate matches the role.
+
+Job title: ${job.title}
+Department: ${job.dept}
+Location: ${job.location}
+Seniority level: ${job.seniority}
+Minimum experience: ${job.minExperience}+ years
+Education preference: ${job.education}
+Required skills: ${job.requiredSkills.join(", ")}
+Preferred skills: ${job.preferredSkills.join(", ")}
+Key responsibilities: ${job.responsibilities.join("; ")}
+Relevant keywords: ${job.keywords.join(", ")}
+
+Scoring rules:
+- Base every judgment strictly on job-relevant qualifications found in the resume text.
+- NEVER use or infer race, ethnicity, national origin, religion, gender, sexual orientation, age, disability, marital/family status, or any other protected characteristic when scoring, and do not mention them.
+- Weight roughly: required skills 35%, experience 25%, responsibilities/domain overlap 15%, education/certifications 10%, preferred skills 10%, seniority fit 5% — but use judgment for the overall "score".
+- Be specific and cite concrete details from the resume in strengths, gaps, summary, and interview questions. Do not invent facts not supported by the resume.
+- If a field (like email or phone) is not present in the resume, return an empty string for it.
+
+Respond with ONLY a single valid JSON object matching exactly this schema — no markdown code fences, no preamble, no trailing commentary:
+${CANDIDATE_JSON_SCHEMA}`;
+}
+
+async function screenResumeWithAI(job, fileContent, fileName) {
+  const system = buildScreeningSystemPrompt(job);
+  let userContent;
+  if (fileContent.kind === "pdf") {
+    userContent = [
+      { type: "document", source: { type: "base64", media_type: "application/pdf", data: fileContent.base64 } },
+      { type: "text", text: `The attached PDF is the candidate's resume (filename: ${fileName}). Evaluate it against the job above and respond with the JSON object only.` },
+    ];
+  } else {
+    const trimmed = fileContent.text.slice(0, 20000);
+    userContent = [
+      { type: "text", text: `Candidate resume (filename: ${fileName}), extracted text:\n\n"""\n${trimmed}\n"""\n\nEvaluate it against the job above and respond with the JSON object only.` },
+    ];
+  }
+  const raw = await callClaude({
+    system,
+    messages: [{ role: "user", content: userContent }],
+    max_tokens: 2200,
+  });
+  const parsed = extractJson(raw);
+  return parsed;
+}
+
+async function askAssistantAI(question, candidates, job) {
+  const compact = candidates.map((c) => ({
+    name: c.name, role: c.role, company: c.company, score: c.score,
+    recommendation: c.recommendation, aiVerdict: c.aiVerdict, experience: c.experience,
+    status: c.status, skillsMatched: c.skillsMatched, skillsPartial: c.skillsPartial,
+    skillsMissing: c.skillsMissing, strengths: c.strengths, gaps: c.gaps,
+    certifications: c.certifications, summary: c.summary,
+  }));
+  const system = `You are the AI screening assistant inside TalentLens AI, an applicant tracking system. You answer a recruiter's questions about the candidate pool for the role below, using ONLY the candidate data provided as JSON. Be concise, specific, and reference candidate names and scores where relevant. Use plain text with short paragraphs and, when listing multiple candidates, simple "- Name — detail" lines. Never use or reference protected characteristics. If the data doesn't answer the question, say so plainly.
+
+Job: ${job.title} (${job.dept}, ${job.location})
+Required skills: ${job.requiredSkills.join(", ")}
+Preferred skills: ${job.preferredSkills.join(", ")}
+
+Candidate pool JSON:
+${JSON.stringify(compact)}`;
+
+  const text = await callClaude({
+    system,
+    messages: [{ role: "user", content: question }],
+    max_tokens: 900,
+  });
+  return text.trim();
+}
+
+/* ============================== PRIMITIVES ============================== */
+
+function ScoreRing({ score, size = 56, stroke = 5, label = true }) {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const color = score >= 85 ? C.emerald : score >= 70 ? C.blue : score >= 55 ? C.amber : C.rose;
+  const [dash, setDash] = useState(circ);
+  useEffect(() => {
+    const t = setTimeout(() => setDash(circ - (score / 100) * circ), 60);
+    return () => clearTimeout(t);
+  }, [score, circ]);
+  return (
+    <div style={{ width: size, height: size, position: "relative" }} className="shrink-0">
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={C.borderSoft} strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={dash}
+          style={{ transition: "stroke-dashoffset 1s cubic-bezier(.4,0,.2,1)" }}
+        />
+      </svg>
+      {label && (
+        <div style={{ position: "absolute", inset: 0 }} className="flex items-center justify-center">
+          <span className="tl-mono" style={{ fontSize: size * 0.28, fontWeight: 600, color: C.text }}>{score}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Badge({ children, bg, fg, style }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+      style={{ background: bg, color: fg, ...style }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function StatusBadge({ status }) {
+  const s = STATUS_STYLE[status] || STATUS_STYLE.New;
+  return <Badge bg={s.bg} fg={s.fg}>{status}</Badge>;
+}
+
+function RecBadge({ rec }) {
+  const color = REC_STYLE[rec] || C.muted;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color }}>
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: color, display: "inline-block" }} />
+      {rec}
+    </span>
+  );
+}
+
+function Card({ children, className = "", style, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      className={`rounded-2xl ${className}`}
+      style={{ background: C.surface, border: `1px solid ${C.border}`, ...style }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Button({ children, variant = "primary", size = "md", icon: Icon, className = "", ...props }) {
+  const base = "tl-focus inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors whitespace-nowrap";
+  const sizes = { sm: "text-xs px-3 py-1.5", md: "text-sm px-4 py-2.5", lg: "text-sm px-5 py-3" };
+  const variants = {
+    primary: { background: C.violet, color: "#fff" },
+    secondary: { background: C.raised2, color: C.text, border: `1px solid ${C.border}` },
+    ghost: { background: "transparent", color: C.muted },
+    danger: { background: "rgba(240,103,138,0.12)", color: C.rose },
+  };
+  return (
+    <button
+      className={`${base} ${sizes[size]} ${className}`}
+      style={{ ...variants[variant], opacity: props.disabled ? 0.55 : 1, cursor: props.disabled ? "not-allowed" : "pointer" }}
+      {...props}
+    >
+      {Icon && <Icon size={15} />}
+      {children}
+    </button>
+  );
+}
+
+function BarMeter({ pct, color = C.violet, height = 6 }) {
+  return (
+    <div style={{ height, background: C.borderSoft, borderRadius: 999, overflow: "hidden" }}>
+      <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 999, transition: "width .6s ease" }} />
+    </div>
+  );
+}
+
+function Progress({ label, pct, color }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs" style={{ color: C.muted }}>{label}</span>
+        <span className="tl-mono text-xs" style={{ color: C.text }}>{pct}%</span>
+      </div>
+      <BarMeter pct={pct} color={color} />
+    </div>
+  );
+}
+
+/* ============================== SHELL ============================== */
+
+function Sidebar({ view, setView }) {
+  return (
+    <aside className="hidden md:flex flex-col w-60 shrink-0 h-full" style={{ background: C.surface, borderRight: `1px solid ${C.border}` }}>
+      <div className="px-5 py-6 flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${C.violet}, ${C.blue})` }}>
+          <Sparkle size={16} color="#fff" />
+        </div>
+        <span className="tl-display text-[17px] font-semibold" style={{ color: C.text }}>TalentLens <span style={{ color: C.violetSoft }}>AI</span></span>
+      </div>
+      <nav className="flex-1 px-3 py-2 space-y-0.5">
+        {NAV.map((n) => {
+          const active = view === n.key;
+          return (
+            <button
+              key={n.key}
+              onClick={() => setView(n.key)}
+              className="tl-focus w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors"
+              style={{
+                background: active ? "rgba(124,111,240,0.12)" : "transparent",
+                color: active ? C.violetSoft : C.muted,
+                fontWeight: active ? 600 : 500,
+              }}
+            >
+              <n.icon size={16} />
+              {n.label}
+            </button>
+          );
+        })}
+      </nav>
+      <div className="p-4 mx-3 mb-4 rounded-xl" style={{ background: C.raised, border: `1px solid ${C.border}` }}>
+        <div className="flex items-center gap-2 mb-1.5">
+          <ShieldCheck size={14} color={C.emerald} />
+          <span className="text-xs font-semibold" style={{ color: C.text }}>Responsible AI</span>
+        </div>
+        <p className="text-[11px] leading-relaxed" style={{ color: C.faint }}>
+          Scores are AI-assisted recommendations. Protected characteristics are never used in ranking.
+        </p>
+      </div>
+    </aside>
+  );
+}
+
+function Topbar({ title, subtitle, onScreen, search, setSearch, onOpenNav }) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-5 md:px-8 py-4 shrink-0" style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(10,14,23,0.7)", backdropFilter: "blur(8px)" }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <button className="md:hidden tl-focus rounded-lg p-2" style={{ background: C.raised, color: C.text }} onClick={onOpenNav}>
+          <Layers size={16} />
+        </button>
+        <div className="min-w-0">
+          <h1 className="tl-display text-lg md:text-xl font-semibold truncate" style={{ color: C.text }}>{title}</h1>
+          {subtitle && <p className="text-xs mt-0.5 truncate" style={{ color: C.muted }}>{subtitle}</p>}
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-2 rounded-lg px-3 py-2 w-64" style={{ background: C.raised, border: `1px solid ${C.border}` }}>
+          <Search size={14} color={C.faint} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Filter candidates by name or skill…"
+            className="bg-transparent outline-none text-xs w-full"
+            style={{ color: C.text }}
+          />
+        </div>
+        <Button icon={ScanSearch} onClick={onScreen}>Screen Candidates</Button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== DASHBOARD ============================== */
+
+function KPI({ label, value, sub, icon: Icon, color = C.violetSoft }) {
+  return (
+    <Card className="p-5 tl-fade-up">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs mb-2" style={{ color: C.muted }}>{label}</p>
+          <p className="tl-display text-2xl font-semibold" style={{ color: C.text }}>{value}</p>
+          {sub && <p className="text-[11px] mt-1.5" style={{ color: C.emerald }}>{sub}</p>}
+        </div>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}22` }}>
+          <Icon size={16} color={color} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function Funnel() {
+  const max = FUNNEL[0].count;
+  return (
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="tl-display text-sm font-semibold" style={{ color: C.text }}>Recruitment funnel</h3>
+          <p className="text-xs mt-0.5" style={{ color: C.muted }}>Across all open roles, last 30 days</p>
+        </div>
+      </div>
+      <div className="flex items-end gap-3 md:gap-5" style={{ height: 160 }}>
+        {FUNNEL.map((f, i) => {
+          const h = Math.max(18, (f.count / max) * 140);
+          const colors = [C.blue, C.blue, C.violet, C.violetSoft, C.emerald, C.emerald];
+          return (
+            <div key={f.stage} className="flex-1 flex flex-col items-center justify-end h-full">
+              <span className="tl-mono text-xs mb-2" style={{ color: C.text }}>{f.count}</span>
+              <div
+                className="w-full rounded-t-md tl-fade-up"
+                style={{ height: h, background: colors[i], opacity: 0.85, animationDelay: `${i * 60}ms` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-3 md:gap-5 mt-3">
+        {FUNNEL.map((f) => (
+          <div key={f.stage} className="flex-1 text-center text-[10px] md:text-[11px]" style={{ color: C.muted }}>{f.stage}</div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function TopCandidates({ candidates, onOpen }) {
+  const top = [...candidates].sort((a, b) => b.score - a.score).slice(0, 4);
+  return (
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="tl-display text-sm font-semibold" style={{ color: C.text }}>Top candidates</h3>
+        <ArrowUpRight size={14} color={C.faint} />
+      </div>
+      <div className="space-y-1">
+        {top.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => onOpen(c)}
+            className="tl-focus w-full flex items-center gap-3 p-2.5 rounded-xl transition-colors"
+            style={{ background: "transparent" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = C.raised)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold" style={{ background: C.raised2, color: C.violetSoft }}>
+              {c.name.split(" ").map((n) => n[0]).join("")}
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-medium truncate" style={{ color: C.text }}>{c.name}</p>
+              <p className="text-[11px] truncate" style={{ color: C.muted }}>{c.role}</p>
+            </div>
+            <ScoreRing score={c.score} size={34} stroke={3} />
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function Dashboard({ candidates, onOpenCandidate, setView }) {
+  const activity = [
+    { text: "Sarah Johnson moved to Shortlisted", time: "2h ago", icon: CheckCircle2, color: C.emerald },
+    { text: "AI screened 5 new resumes for Senior ML Engineer", time: "4h ago", icon: ScanSearch, color: C.violetSoft },
+    { text: "Aisha Patel scheduled for interview", time: "1d ago", icon: CalendarDays, color: C.blue },
+    { text: "James Wilson added to the pipeline", time: "1d ago", icon: Users, color: C.faint },
+  ];
+  const screened = candidates.length;
+  const shortlisted = candidates.filter((c) => c.status === "Shortlisted" || c.status === "Interview").length;
+  const avgScore = Math.round(candidates.reduce((s, c) => s + c.score, 0) / (candidates.length || 1));
+  return (
+    <div className="p-5 md:p-8 space-y-6 max-w-[1400px]">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPI label="Total candidates" value={String(screened)} sub={`+${candidates.filter(c=>c.aiGenerated).length} from AI screening`} icon={Users} color={C.violetSoft} />
+        <KPI label="Screened by AI" value={String(candidates.filter(c=>c.aiGenerated).length)} icon={ScanSearch} color={C.blue} />
+        <KPI label="Shortlisted" value={String(shortlisted)} icon={CheckCircle2} color={C.emerald} />
+        <KPI label="Avg. match score" value={`${avgScore}%`} icon={TrendingUp} color={C.amber} />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2"><Funnel /></div>
+        <TopCandidates candidates={candidates} onOpen={onOpenCandidate} />
+      </div>
+      <Card className="p-6">
+        <h3 className="tl-display text-sm font-semibold mb-4" style={{ color: C.text }}>Recent activity</h3>
+        <div className="space-y-4">
+          {activity.map((a, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${a.color}1f` }}>
+                <a.icon size={14} color={a.color} />
+              </div>
+              <p className="text-sm flex-1" style={{ color: C.text }}>{a.text}</p>
+              <span className="text-xs shrink-0" style={{ color: C.faint }}>{a.time}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ============================== JOBS ============================== */
+
+function JobsView({ setActiveJob, activeJob, setView, candidates }) {
+  return (
+    <div className="p-5 md:p-8 space-y-6 max-w-[1400px]">
+      <div className="flex items-center justify-between">
+        <p className="text-sm" style={{ color: C.muted }}>{JOBS.length} open roles</p>
+        <Button icon={Plus}>Create Job</Button>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {JOBS.map((j) => {
+          const jCandidates = candidates.filter((c) => c.jobId === j.id);
+          const avg = jCandidates.length ? Math.round(jCandidates.reduce((s, c) => s + c.score, 0) / jCandidates.length) : j.avgScore;
+          return (
+          <Card key={j.id} className="p-6 tl-fade-up">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="tl-display text-base font-semibold" style={{ color: C.text }}>{j.title}</h3>
+                <p className="text-xs mt-1" style={{ color: C.muted }}>{j.dept} · {j.location} · {j.type}</p>
+              </div>
+              <Badge bg="rgba(52,211,153,0.14)" fg={C.emerald}>{j.status}</Badge>
+            </div>
+            <div className="flex items-center gap-4 text-xs mb-4" style={{ color: C.faint }}>
+              <span>{jCandidates.length} candidates</span>
+              <span>·</span>
+              <span>{avg}% avg match</span>
+              <span>·</span>
+              <span>Posted {j.createdAt}</span>
+            </div>
+            <p className="text-[11px] font-medium mb-2" style={{ color: C.muted }}>Required skills</p>
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {j.requiredSkills.map((s) => (
+                <span key={s} className="text-[11px] px-2 py-1 rounded-md" style={{ background: C.raised2, color: C.text }}>{s}</span>
+              ))}
+            </div>
+            <p className="text-[11px] font-medium mb-2" style={{ color: C.muted }}>Preferred skills</p>
+            <div className="flex flex-wrap gap-1.5 mb-5">
+              {j.preferredSkills.map((s) => (
+                <span key={s} className="text-[11px] px-2 py-1 rounded-md" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted }}>{s}</span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => { setActiveJob(j); setView("candidates"); }}>View candidates</Button>
+              <Button size="sm" variant="ghost">Edit requirements</Button>
+            </div>
+          </Card>
+          );
+        })}
+      </div>
+
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles size={14} color={C.violetSoft} />
+          <h3 className="tl-display text-sm font-semibold" style={{ color: C.text }}>AI-extracted requirements — {activeJob.title}</h3>
+        </div>
+        <p className="text-xs mb-5" style={{ color: C.muted }}>Extracted automatically from the job description. Editable before screening begins.</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            ["Seniority level", activeJob.seniority],
+            ["Min. experience", `${activeJob.minExperience}+ years`],
+            ["Education", activeJob.education],
+            ["Keywords", activeJob.keywords.join(", ")],
+          ].map(([label, val]) => (
+            <div key={label} className="p-3 rounded-xl" style={{ background: C.raised }}>
+              <p className="text-[10px] mb-1.5" style={{ color: C.faint }}>{label}</p>
+              <p className="text-xs" style={{ color: C.text }}>{val}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ============================== CANDIDATES LIST ============================== */
+
+function CandidatesView({ candidates, onOpen, compareIds, toggleCompare, activeJob, setView, search }) {
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [minScore, setMinScore] = useState(0);
+  const list = candidates.filter((c) => c.jobId === activeJob.id)
+    .filter((c) => statusFilter === "All" || c.status === statusFilter)
+    .filter((c) => c.score >= minScore)
+    .filter((c) => !search || `${c.name} ${c.role} ${c.skillsMatched.join(" ")}`.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="p-5 md:p-8 space-y-5 max-w-[1400px] pb-24">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <FilterPill label="Status" value={statusFilter} options={["All", "New", "Screening", "Shortlisted", "Interview"]} onChange={setStatusFilter} />
+        <FilterPill label="Min match" value={`${minScore}%+`} options={["0%+", "60%+", "75%+", "90%+"]} onChange={(v) => setMinScore(parseInt(v))} />
+        <span className="text-xs ml-auto" style={{ color: C.muted }}>{list.length} candidates for {activeJob.title}</span>
+      </div>
+
+      {list.length === 0 ? (
+        <Card className="p-10 flex flex-col items-center text-center">
+          <Users size={22} color={C.faint} className="mb-3" />
+          <p className="text-sm font-medium" style={{ color: C.text }}>No candidates match these filters</p>
+          <p className="text-xs mt-1" style={{ color: C.muted }}>Try loosening the filters, or screen new resumes for this role.</p>
+          <Button size="sm" className="mt-4" icon={ScanSearch} onClick={() => setView("screening")}>Screen Candidates</Button>
+        </Card>
+      ) : (
+      <Card className="overflow-hidden">
+        <div className="hidden md:grid grid-cols-[28px_2fr_1fr_1.2fr_0.7fr_1fr_1fr] gap-3 px-5 py-3 text-[11px] font-medium" style={{ borderBottom: `1px solid ${C.border}`, color: C.faint }}>
+          <span></span><span>Candidate</span><span>Role</span><span>Top skills</span><span>Exp.</span><span>AI Match</span><span>Status</span>
+        </div>
+        {list.map((c) => (
+          <div
+            key={c.id}
+            className="grid grid-cols-[28px_1fr] md:grid-cols-[28px_2fr_1fr_1.2fr_0.7fr_1fr_1fr] gap-3 px-5 py-4 items-center cursor-pointer transition-colors"
+            style={{ borderBottom: `1px solid ${C.borderSoft}` }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = C.raised)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <input
+              type="checkbox"
+              checked={compareIds.includes(c.id)}
+              onChange={(e) => { e.stopPropagation(); toggleCompare(c.id); }}
+              className="w-4 h-4 accent-violet-500"
+            />
+            <div className="flex items-center gap-3 min-w-0" onClick={() => onOpen(c)}>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold" style={{ background: C.raised2, color: C.violetSoft }}>
+                {c.name.split(" ").map((n) => n[0]).join("")}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: C.text }}>{c.name}</p>
+                <p className="text-[11px] truncate md:hidden" style={{ color: C.muted }}>{c.role} · {c.experience} yrs</p>
+              </div>
+            </div>
+            <p className="hidden md:block text-xs truncate" style={{ color: C.muted }}>{c.role}</p>
+            <div className="hidden md:flex flex-wrap gap-1">
+              {c.skillsMatched.slice(0, 2).map((s) => (
+                <span key={s} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: C.raised2, color: C.muted }}>{s}</span>
+              ))}
+            </div>
+            <p className="hidden md:block text-xs tl-mono" style={{ color: C.muted }}>{c.experience}y</p>
+            <div className="flex items-center gap-2" onClick={() => onOpen(c)}>
+              <ScoreRing score={c.score} size={30} stroke={3} />
+              <RecBadge rec={c.recommendation} />
+            </div>
+            <div><StatusBadge status={c.status} /></div>
+          </div>
+        ))}
+      </Card>
+      )}
+
+      {compareIds.length > 0 && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-20">
+          <Card className="px-5 py-3 flex items-center gap-4" style={{ boxShadow: "0 10px 40px rgba(0,0,0,0.4)" }}>
+            <span className="text-xs" style={{ color: C.text }}>{compareIds.length} selected</span>
+            <Button size="sm" onClick={() => setView("compare")} disabled={compareIds.length < 2}>Compare candidates</Button>
+            <button onClick={() => compareIds.forEach(toggleCompare)} className="tl-focus"><X size={14} color={C.faint} /></button>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FilterPill({ label, value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="tl-focus flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+        style={{ background: C.raised, border: `1px solid ${C.border}`, color: C.text }}
+      >
+        <Filter size={11} color={C.faint} />
+        {label}: <span style={{ color: C.violetSoft }}>{value}</span>
+        <ChevronDown size={12} color={C.faint} />
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 left-0 z-30 rounded-lg overflow-hidden min-w-[130px]" style={{ background: C.raised2, border: `1px solid ${C.border}` }}>
+          {options.map((o) => (
+            <button
+              key={o}
+              onClick={() => { onChange(o); setOpen(false); }}
+              className="tl-focus block w-full text-left px-3 py-2 text-xs"
+              style={{ color: C.text }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = C.raised)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================== CANDIDATE PROFILE ============================== */
+
+function SkillPill({ label, type }) {
+  const styles = {
+    match: { bg: "rgba(52,211,153,0.12)", fg: C.emerald, icon: CheckCircle2 },
+    partial: { bg: "rgba(245,184,76,0.12)", fg: C.amber, icon: MinusCircle },
+    missing: { bg: "rgba(240,103,138,0.1)", fg: C.rose, icon: XCircle },
+  };
+  const s = styles[type];
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg" style={{ background: s.bg, color: s.fg }}>
+      <s.icon size={12} />{label}
+    </span>
+  );
+}
+
+function CandidateProfile({ candidate, onBack, job, onUpdateStatus }) {
+  const [showExplain, setShowExplain] = useState(false);
+  const c = candidate;
+  const verdictColor = { "Strong Hire": C.emerald, Hire: C.blue, Consider: C.amber, Reject: C.rose }[c.aiVerdict] || C.muted;
+  const nextStage = { New: "Screening", Screening: "Shortlisted", Shortlisted: "Interview", Interview: "Offer", Offer: "Hired" }[c.status];
+  return (
+    <div className="p-5 md:p-8 max-w-[1200px] space-y-6">
+      <button onClick={onBack} className="tl-focus flex items-center gap-1.5 text-xs mb-1" style={{ color: C.muted }}>
+        <ChevronLeft size={14} /> Back to candidates
+      </button>
+
+      <Card className="p-6 md:p-7">
+        <div className="flex flex-col md:flex-row md:items-center gap-5 justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center text-base font-semibold shrink-0" style={{ background: C.raised2, color: C.violetSoft }}>
+              {c.name.split(" ").map((n) => n[0]).join("")}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="tl-display text-xl font-semibold" style={{ color: C.text }}>{c.name}</h2>
+                <StatusBadge status={c.status} />
+                {c.aiGenerated && <Badge bg="rgba(124,111,240,0.14)" fg={C.violetSoft}><Sparkles size={10} />AI-screened</Badge>}
+              </div>
+              <p className="text-sm mt-0.5" style={{ color: C.muted }}>{c.role} at {c.company}</p>
+              <div className="flex items-center gap-4 mt-2 text-xs flex-wrap" style={{ color: C.faint }}>
+                <span className="flex items-center gap-1"><MapPin size={12} />{c.location || "—"}</span>
+                {c.email && <span className="flex items-center gap-1"><Mail size={12} />{c.email}</span>}
+                {c.phone && <span className="flex items-center gap-1"><Phone size={12} />{c.phone}</span>}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-5">
+            <ScoreRing score={c.score} size={72} stroke={6} />
+            <div>
+              <p className="text-[10px] mb-1" style={{ color: C.faint }}>AI recommendation</p>
+              <Badge bg={`${verdictColor}22`} fg={verdictColor} style={{ fontWeight: 600 }}>{c.aiVerdict}</Badge>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-6">
+          {nextStage && <Button size="sm" variant="secondary" onClick={() => onUpdateStatus(c.id, nextStage)}>Move to {nextStage}</Button>}
+          <Button size="sm" variant="secondary">Schedule interview</Button>
+          <Button size="sm" variant="ghost" icon={showExplain ? EyeOff : Eye} onClick={() => setShowExplain(!showExplain)}>
+            {showExplain ? "Hide" : "Explain"} score
+          </Button>
+        </div>
+      </Card>
+
+      {showExplain && (
+        <Card className="p-6 tl-fade-up">
+          <h3 className="tl-display text-sm font-semibold mb-1" style={{ color: C.text }}>Why {c.name.split(" ")[0]} scored {c.score}%</h3>
+          <p className="text-xs mb-5" style={{ color: C.muted }}>Weighted against "{job.title}" requirements. AI-assisted — review before deciding.</p>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-6">
+            <Progress label="Required skills (35%)" pct={c.breakdown.skill} color={C.violet} />
+            <Progress label="Experience (25%)" pct={c.breakdown.experience} color={C.blue} />
+            <Progress label="Responsibilities (15%)" pct={c.breakdown.responsibility} color={C.violetSoft} />
+            <Progress label="Education (10%)" pct={c.breakdown.education} color={C.emerald} />
+            <Progress label="Preferred skills (10%)" pct={c.breakdown.preferred} color={C.amber} />
+            <Progress label="Seniority (5%)" pct={c.breakdown.seniority} color={C.blue} />
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <p className="text-xs font-semibold mb-2.5" style={{ color: C.emerald }}>Why this candidate scored highly</p>
+              <ul className="space-y-2">
+                {c.strengths.map((s, i) => (
+                  <li key={i} className="text-xs flex gap-2" style={{ color: C.muted }}>
+                    <CheckCircle2 size={13} color={C.emerald} className="mt-0.5 shrink-0" />{s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-xs font-semibold mb-2.5" style={{ color: C.amber }}>Potential gaps</p>
+              <ul className="space-y-2">
+                {c.gaps.map((g, i) => (
+                  <li key={i} className="text-xs flex gap-2" style={{ color: C.muted }}>
+                    <AlertTriangle size={13} color={C.amber} className="mt-0.5 shrink-0" />{g}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles size={14} color={C.violetSoft} />
+          <h3 className="tl-display text-sm font-semibold" style={{ color: C.text }}>AI summary</h3>
+        </div>
+        <p className="text-sm leading-relaxed" style={{ color: C.muted }}>{c.summary}</p>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="tl-display text-sm font-semibold mb-4" style={{ color: C.text }}>Skills</h3>
+        <div className="flex flex-wrap gap-2">
+          {c.skillsMatched.map((s) => <SkillPill key={s} label={s} type="match" />)}
+          {c.skillsPartial.map((s) => <SkillPill key={s} label={s} type="partial" />)}
+          {c.skillsMissing.map((s) => <SkillPill key={s} label={s} type="missing" />)}
+        </div>
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card className="p-6">
+          <h3 className="tl-display text-sm font-semibold mb-4" style={{ color: C.text }}>Experience timeline</h3>
+          <div className="space-y-5">
+            {c.timeline.map((t, i) => (
+              <div key={i} className="relative pl-5" style={{ borderLeft: i === c.timeline.length - 1 ? "none" : `1px solid ${C.border}` }}>
+                <div className="absolute left-[-4.5px] top-1 w-2 h-2 rounded-full" style={{ background: i === 0 ? C.violet : C.faint }} />
+                <p className="text-sm font-medium" style={{ color: C.text }}>{t.title}</p>
+                <p className="text-xs" style={{ color: C.violetSoft }}>{t.company} · {t.dates}</p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: C.muted }}>{t.desc}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <div className="space-y-6">
+          <Card className="p-6">
+            <h3 className="tl-display text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: C.text }}><GraduationCap size={14} color={C.violetSoft} />Education</h3>
+            {c.education.length ? c.education.map((e, i) => (
+              <div key={i} className="mb-2">
+                <p className="text-sm" style={{ color: C.text }}>{e.degree}</p>
+                <p className="text-xs" style={{ color: C.muted }}>{e.school} · {e.year}</p>
+              </div>
+            )) : <p className="text-xs" style={{ color: C.faint }}>None listed</p>}
+          </Card>
+          <Card className="p-6">
+            <h3 className="tl-display text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: C.text }}><Award size={14} color={C.violetSoft} />Certifications</h3>
+            {c.certifications.length ? c.certifications.map((cert) => (
+              <p key={cert} className="text-sm mb-1.5" style={{ color: C.text }}>{cert}</p>
+            )) : <p className="text-xs" style={{ color: C.faint }}>None listed</p>}
+          </Card>
+        </div>
+      </div>
+
+      <Card className="p-6">
+        <h3 className="tl-display text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: C.text }}><Bot size={14} color={C.violetSoft} />AI-generated interview questions</h3>
+        <div className="space-y-3">
+          {c.interviewQuestions.map((q, i) => (
+            <div key={i} className="flex gap-3 p-3 rounded-xl" style={{ background: C.raised }}>
+              <span className="tl-mono text-xs shrink-0" style={{ color: C.violetSoft }}>{String(i + 1).padStart(2, "0")}</span>
+              <p className="text-sm" style={{ color: C.text }}>{q}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <p className="text-[11px] text-center pb-4" style={{ color: C.faint }}>
+        AI recommendations are decision-support tools and should be reviewed by qualified human decision-makers.
+      </p>
+    </div>
+  );
+}
+
+/* ============================== COMPARE ============================== */
+
+function CompareView({ ids, candidates, onBack, onOpen }) {
+  const list = candidates.filter((c) => ids.includes(c.id));
+  const rows = [
+    { label: "Overall score", get: (c) => c.score, best: "max" },
+    { label: "Experience", get: (c) => `${c.experience} yrs`, raw: (c) => c.experience, best: "max" },
+    { label: "Required skills matched", get: (c) => `${c.skillsMatched.length}`, raw: (c) => c.skillsMatched.length, best: "max" },
+    { label: "Missing skills", get: (c) => `${c.skillsMissing.length}`, raw: (c) => c.skillsMissing.length, best: "min" },
+    { label: "Education match", get: (c) => `${c.breakdown.education}%`, raw: (c) => c.breakdown.education, best: "max" },
+    { label: "Recommendation", get: (c) => c.recommendation },
+  ];
+  return (
+    <div className="p-5 md:p-8 space-y-6 max-w-[1200px]">
+      <button onClick={onBack} className="tl-focus flex items-center gap-1.5 text-xs" style={{ color: C.muted }}>
+        <ChevronLeft size={14} /> Back to candidates
+      </button>
+      <div className="overflow-x-auto">
+        <div className="grid" style={{ gridTemplateColumns: `160px repeat(${list.length}, minmax(200px,1fr))`, minWidth: 160 + list.length * 200 }}>
+          <div />
+          {list.map((c) => (
+            <Card key={c.id} className="p-5 mx-1.5 mb-3 text-center cursor-pointer" onClick={() => onOpen(c)}>
+              <div className="w-11 h-11 rounded-full mx-auto flex items-center justify-center text-sm font-semibold mb-2" style={{ background: C.raised2, color: C.violetSoft }}>
+                {c.name.split(" ").map((n) => n[0]).join("")}
+              </div>
+              <p className="text-sm font-medium" style={{ color: C.text }}>{c.name}</p>
+              <p className="text-[11px] mb-2" style={{ color: C.muted }}>{c.role}</p>
+              <ScoreRing score={c.score} size={44} stroke={4} />
+            </Card>
+          ))}
+
+          {rows.map((row) => {
+            const values = list.map((c) => (row.raw ? row.raw(c) : row.get(c)));
+            const bestVal = row.best === "max" ? Math.max(...values) : row.best === "min" ? Math.min(...values) : null;
+            return (
+              <React.Fragment key={row.label}>
+                <div className="flex items-center px-3 py-3 text-xs font-medium" style={{ color: C.muted }}>{row.label}</div>
+                {list.map((c, i) => {
+                  const isBest = bestVal !== null && values[i] === bestVal;
+                  return (
+                    <div key={c.id} className="mx-1.5 mb-1 px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-1.5"
+                      style={{ background: isBest ? "rgba(52,211,153,0.1)" : C.raised, color: isBest ? C.emerald : C.text, fontWeight: isBest ? 600 : 500 }}>
+                      {isBest && <Star size={11} fill={C.emerald} color={C.emerald} />}
+                      {row.get(c)}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+
+          <div className="flex items-start px-3 py-3 text-xs font-medium" style={{ color: C.muted }}>Strengths</div>
+          {list.map((c) => (
+            <div key={c.id} className="mx-1.5 mb-1 px-4 py-3 rounded-lg text-xs" style={{ background: C.raised, color: C.muted }}>
+              <ul className="space-y-1.5 list-disc list-inside">
+                {c.strengths.slice(0, 2).map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+            </div>
+          ))}
+          <div className="flex items-start px-3 py-3 text-xs font-medium" style={{ color: C.muted }}>Gaps</div>
+          {list.map((c) => (
+            <div key={c.id} className="mx-1.5 mb-1 px-4 py-3 rounded-lg text-xs" style={{ background: C.raised, color: C.muted }}>
+              <ul className="space-y-1.5 list-disc list-inside">
+                {c.gaps.slice(0, 2).map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== SCREENING (REAL AI UPLOAD FLOW) ============================== */
+
+function ScreeningView({ activeJob, onDone, onAddCandidates }) {
+  const [queue, setQueue] = useState([]); // { id, name, file, status: pending|reading|analyzing|done|error, result?, error? }
+  const [running, setRunning] = useState(false);
+  const [drag, setDrag] = useState(false);
+  const [doneCount, setDoneCount] = useState(0);
+
+  const addFiles = (fileList) => {
+    const items = fileList.map((file) => ({ id: Math.random().toString(36).slice(2), name: file.name, file, status: "pending" }));
+    setQueue((q) => [...q, ...items]);
+  };
+
+  const removeItem = (id) => setQueue((q) => q.filter((x) => x.id !== id));
+
+  const runScreening = async () => {
+    if (queue.length === 0 || running) return;
+    setRunning(true);
+    setDoneCount(0);
+    const finished = [];
+    for (const item of queue) {
+      setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "reading" } : x)));
+      try {
+        const content = await readFileForAI(item.file);
+        setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "analyzing" } : x)));
+        const parsed = await screenResumeWithAI(activeJob, content, item.name);
+        const candidate = normalizeAICandidate(parsed, activeJob.id);
+        finished.push(candidate);
+        setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "done", result: candidate } : x)));
+      } catch (err) {
+        setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "error", error: err.message || "Failed to analyze resume" } : x)));
+      }
+      setDoneCount((n) => n + 1);
+    }
+    if (finished.length) onAddCandidates(finished);
+    setRunning(false);
+  };
+
+  const retryItem = async (item) => {
+    setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "reading", error: null } : x)));
+    try {
+      const content = await readFileForAI(item.file);
+      setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "analyzing" } : x)));
+      const parsed = await screenResumeWithAI(activeJob, content, item.name);
+      const candidate = normalizeAICandidate(parsed, activeJob.id);
+      setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "done", result: candidate } : x)));
+      onAddCandidates([candidate]);
+    } catch (err) {
+      setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "error", error: err.message || "Failed to analyze resume" } : x)));
+    }
+  };
+
+  const allDone = queue.length > 0 && queue.every((x) => x.status === "done" || x.status === "error");
+  const successResults = queue.filter((x) => x.status === "done").map((x) => x.result);
+
+  const stageLabel = { pending: "Queued", reading: "Reading file", analyzing: "AI analyzing…", done: "Complete", error: "Failed" };
+  const stageColor = { pending: C.faint, reading: C.blue, analyzing: C.violetSoft, done: C.emerald, error: C.rose };
+
+  return (
+    <div className="p-5 md:p-8 space-y-6 max-w-[1000px]">
+      <p className="text-xs" style={{ color: C.muted }}>Screening candidates against <span style={{ color: C.violetSoft }}>{activeJob.title}</span> using live AI resume analysis</p>
+
+      {!allDone && (
+        <Card
+          className="p-10 flex flex-col items-center justify-center text-center"
+          style={{ borderStyle: "dashed", borderColor: drag ? C.violet : C.border, background: drag ? "rgba(124,111,240,0.05)" : C.surface }}
+          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={(e) => { e.preventDefault(); setDrag(false); if (!running) addFiles(Array.from(e.dataTransfer.files || [])); }}
+        >
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "rgba(124,111,240,0.12)" }}>
+            <Upload size={22} color={C.violetSoft} />
+          </div>
+          <p className="text-sm font-medium mb-1" style={{ color: C.text }}>Drag & drop resumes here</p>
+          <p className="text-xs mb-5" style={{ color: C.muted }}>PDF, DOCX, or TXT · Each resume is analyzed by Claude against this role's requirements</p>
+          <label className="tl-focus cursor-pointer">
+            <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium" style={{ background: C.raised2, color: C.text, border: `1px solid ${C.border}` }}>
+              Browse files
+            </span>
+            <input type="file" multiple disabled={running} className="hidden" onChange={(e) => { addFiles(Array.from(e.target.files || [])); e.target.value = ""; }} accept=".pdf,.docx,.txt" />
+          </label>
+
+          {queue.length > 0 && (
+            <div className="w-full mt-6 space-y-2 text-left">
+              {queue.map((item) => (
+                <div key={item.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg" style={{ background: C.raised }}>
+                  <FileText size={13} color={C.faint} />
+                  <span className="text-xs flex-1 truncate" style={{ color: C.text }}>{item.name}</span>
+                  {item.status === "reading" || item.status === "analyzing" ? (
+                    <Loader2 size={13} className="animate-spin" color={stageColor[item.status]} />
+                  ) : item.status === "done" ? (
+                    <CheckCircle2 size={13} color={C.emerald} />
+                  ) : item.status === "error" ? (
+                    <AlertCircle size={13} color={C.rose} />
+                  ) : null}
+                  <span className="text-[11px] w-24 text-right shrink-0" style={{ color: stageColor[item.status] }}>{stageLabel[item.status]}</span>
+                  {item.status === "error" && (
+                    <button onClick={() => retryItem(item)} className="tl-focus" title="Retry"><RefreshCw size={12} color={C.violetSoft} /></button>
+                  )}
+                  {item.status === "pending" && !running && (
+                    <button onClick={() => removeItem(item.id)} className="tl-focus"><X size={12} color={C.faint} /></button>
+                  )}
+                </div>
+              ))}
+              {!running && !allDone && (
+                <Button className="w-full mt-3" onClick={runScreening} icon={ScanSearch}>
+                  Run AI screening on {queue.filter(x=>x.status==="pending").length} resume{queue.filter(x=>x.status==="pending").length !== 1 ? "s" : ""}
+                </Button>
+              )}
+              {running && (
+                <p className="text-[11px] text-center mt-2" style={{ color: C.muted }}>Analyzing {doneCount}/{queue.length}… each resume is sent to Claude individually, this may take a moment.</p>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {allDone && (
+        <div className="space-y-3 tl-fade-up">
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCircle2 size={16} color={C.emerald} />
+            <h3 className="tl-display text-sm font-semibold" style={{ color: C.text }}>
+              Screening complete — {successResults.length} candidate{successResults.length !== 1 ? "s" : ""} ranked
+              {queue.some(x => x.status === "error") ? `, ${queue.filter(x=>x.status==="error").length} failed` : ""}
+            </h3>
+          </div>
+          {successResults.sort((a,b) => b.score - a.score).map((c) => (
+            <Card key={c.id} className="p-4 flex items-center gap-4 cursor-pointer" onClick={() => onDone(c)}>
+              <ScoreRing score={c.score} size={44} stroke={4} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium" style={{ color: C.text }}>{c.name}</p>
+                <p className="text-xs" style={{ color: C.muted }}>{c.role} · {c.experience} yrs</p>
+              </div>
+              <RecBadge rec={c.recommendation} />
+              <ChevronRight size={14} color={C.faint} />
+            </Card>
+          ))}
+          {queue.filter(x => x.status === "error").map((item) => (
+            <Card key={item.id} className="p-4 flex items-center gap-4" style={{ borderColor: "rgba(240,103,138,0.3)" }}>
+              <AlertCircle size={20} color={C.rose} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium" style={{ color: C.text }}>{item.name}</p>
+                <p className="text-xs" style={{ color: C.rose }}>{item.error}</p>
+              </div>
+              <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => retryItem(item)}>Retry</Button>
+            </Card>
+          ))}
+          <Button variant="secondary" onClick={() => setQueue([])}>Screen more resumes</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function normalizeAICandidate(parsed, jobId) {
+  const clamp = (n) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
+  return {
+    id: `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: parsed.name || "Unknown Candidate",
+    role: parsed.role || "—",
+    company: parsed.company || "—",
+    location: parsed.location || "",
+    experience: Number(parsed.experience) || 0,
+    jobId,
+    status: "New",
+    dateAdded: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    score: clamp(parsed.score),
+    recommendation: parsed.recommendation || "Review",
+    aiVerdict: parsed.aiVerdict || "Consider",
+    email: parsed.email || "",
+    phone: parsed.phone || "",
+    education: Array.isArray(parsed.education) ? parsed.education : [],
+    certifications: Array.isArray(parsed.certifications) ? parsed.certifications : [],
+    skillsMatched: Array.isArray(parsed.skillsMatched) ? parsed.skillsMatched : [],
+    skillsPartial: Array.isArray(parsed.skillsPartial) ? parsed.skillsPartial : [],
+    skillsMissing: Array.isArray(parsed.skillsMissing) ? parsed.skillsMissing : [],
+    breakdown: {
+      skill: clamp(parsed.breakdown?.skill),
+      experience: clamp(parsed.breakdown?.experience),
+      responsibility: clamp(parsed.breakdown?.responsibility),
+      education: clamp(parsed.breakdown?.education),
+      preferred: clamp(parsed.breakdown?.preferred),
+      seniority: clamp(parsed.breakdown?.seniority),
+    },
+    strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+    gaps: Array.isArray(parsed.gaps) ? parsed.gaps : [],
+    timeline: Array.isArray(parsed.timeline) ? parsed.timeline : [],
+    summary: parsed.summary || "",
+    interviewQuestions: Array.isArray(parsed.interviewQuestions) ? parsed.interviewQuestions : [],
+    aiGenerated: true,
+  };
+}
+
+/* ============================== INTERVIEWS ============================== */
+
+function InterviewsView({ candidates, onOpen }) {
+  const scheduled = candidates.filter((c) => c.status === "Interview" || c.status === "Shortlisted");
+  return (
+    <div className="p-5 md:p-8 space-y-4 max-w-[1000px]">
+      <p className="text-xs mb-2" style={{ color: C.muted }}>{scheduled.length} candidates in interview stages</p>
+      {scheduled.length === 0 && (
+        <Card className="p-10 flex flex-col items-center text-center">
+          <CalendarDays size={22} color={C.faint} className="mb-3" />
+          <p className="text-sm" style={{ color: C.muted }}>No candidates are in interview stages yet.</p>
+        </Card>
+      )}
+      {scheduled.map((c) => (
+        <Card key={c.id} className="p-5 flex items-center gap-4 cursor-pointer" onClick={() => onOpen(c)}>
+          <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold shrink-0" style={{ background: C.raised2, color: C.violetSoft }}>
+            {c.name.split(" ").map((n) => n[0]).join("")}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" style={{ color: C.text }}>{c.name}</p>
+            <p className="text-xs" style={{ color: C.muted }}>{c.role} at {c.company}</p>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 text-xs" style={{ color: C.faint }}>
+            <Clock size={12} /> {c.status === "Interview" ? "Interview scheduled" : "Awaiting scheduling"}
+          </div>
+          <StatusBadge status={c.status} />
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/* ============================== ANALYTICS ============================== */
+
+function LineChart({ data, color = C.violet, height = 140 }) {
+  const max = Math.max(...data), min = Math.min(...data);
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * 100;
+    const y = 100 - ((v - min) / (max - min || 1)) * 90 - 5;
+    return `${x},${y}`;
+  }).join(" ");
+  const area = `0,100 ${pts} 100,100`;
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: "100%", height }}>
+      <defs>
+        <linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={area} fill="url(#lg1)" />
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function AnalyticsView({ candidates }) {
+  const avgScore = Math.round(candidates.reduce((s, c) => s + c.score, 0) / (candidates.length || 1));
+  const shortlisted = candidates.filter(c => c.status === "Shortlisted" || c.status === "Interview" || c.status === "Offer" || c.status === "Hired").length;
+  const shortlistRate = candidates.length ? Math.round((shortlisted / candidates.length) * 100) : 0;
+
+  const skillCounts = {};
+  candidates.forEach((c) => c.skillsMatched.forEach((s) => { skillCounts[s] = (skillCounts[s] || 0) + 1; }));
+  const topSkills = Object.entries(skillCounts).sort((a,b) => b[1]-a[1]).slice(0,7).map(([skill,count]) => ({ skill, pct: Math.round((count/candidates.length)*100) }));
+  const skillsToShow = topSkills.length ? topSkills : TOP_SKILLS;
+
+  return (
+    <div className="p-5 md:p-8 space-y-6 max-w-[1200px]">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPI label="Candidates screened" value={String(candidates.length)} icon={ScanSearch} color={C.blue} />
+        <KPI label="Shortlist rate" value={`${shortlistRate}%`} icon={CheckCircle2} color={C.emerald} />
+        <KPI label="AI-screened resumes" value={String(candidates.filter(c=>c.aiGenerated).length)} icon={Sparkles} color={C.violetSoft} />
+        <KPI label="Avg. match score" value={`${avgScore}%`} icon={Zap} color={C.amber} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card className="p-6">
+          <h3 className="tl-display text-sm font-semibold mb-1" style={{ color: C.text }}>Average match score trend</h3>
+          <p className="text-xs mb-4" style={{ color: C.muted }}>Last 12 weeks</p>
+          <LineChart data={SCORE_TREND} color={C.violetSoft} />
+        </Card>
+        <Card className="p-6">
+          <h3 className="tl-display text-sm font-semibold mb-4" style={{ color: C.text }}>Top skills across candidate pool</h3>
+          <div className="space-y-3">
+            {skillsToShow.map((s) => (
+              <div key={s.skill}>
+                <div className="flex justify-between mb-1"><span className="text-xs" style={{ color: C.muted }}>{s.skill}</span><span className="tl-mono text-xs" style={{ color: C.text }}>{s.pct}%</span></div>
+                <BarMeter pct={s.pct} color={C.blue} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <Card className="p-6"><Funnel /></Card>
+
+      <Card className="p-6">
+        <h3 className="tl-display text-sm font-semibold mb-4" style={{ color: C.text }}>Candidate source</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[["Referrals", 38], ["LinkedIn", 29], ["Job boards", 21], ["Agency", 12]].map(([label, pct]) => (
+            <div key={label} className="p-4 rounded-xl" style={{ background: C.raised }}>
+              <p className="tl-display text-xl font-semibold" style={{ color: C.text }}>{pct}%</p>
+              <p className="text-xs mt-1" style={{ color: C.muted }}>{label}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ============================== AI ASSISTANT (LIVE) ============================== */
+
+const SUGGESTED = [
+  "Who are the top 5 candidates?",
+  "Which candidates have Kubernetes experience?",
+  "Who has the strongest leadership background?",
+  "Show candidates missing AWS.",
+  "Why is the top-ranked candidate the strongest fit?",
+];
+
+function AIAssistant({ candidates, activeJob }) {
+  const [messages, setMessages] = useState([
+    { role: "ai", text: `Hi, I'm your AI screening assistant. Ask me anything about your candidate pipeline for ${activeJob.title}.` },
+  ]);
+  const [input, setInput] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const endRef = useRef(null);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, thinking]);
+
+  const send = async (text) => {
+    const q = (text ?? input).trim();
+    if (!q || thinking) return;
+    setMessages((m) => [...m, { role: "user", text: q }]);
+    setInput("");
+    setThinking(true);
+    try {
+      const jobCandidates = candidates.filter((c) => c.jobId === activeJob.id);
+      const answer = await askAssistantAI(q, jobCandidates, activeJob);
+      setMessages((m) => [...m, { role: "ai", text: answer }]);
+    } catch (err) {
+      setMessages((m) => [...m, { role: "ai", text: `Sorry, I couldn't reach the AI service (${err.message || "unknown error"}). Please try again.`, isError: true }]);
+    } finally {
+      setThinking(false);
+    }
+  };
+
+  return (
+    <div className="p-5 md:p-8 max-w-[820px] flex flex-col" style={{ height: "calc(100vh - 90px)" }}>
+      <div className="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
+        {messages.map((m, i) => (
+          <div key={i} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: m.role === "ai" ? "rgba(124,111,240,0.15)" : C.raised2 }}>
+              {m.role === "ai" ? <Bot size={14} color={C.violetSoft} /> : <User size={14} color={C.muted} />}
+            </div>
+            <div className="max-w-[80%]">
+              <div className="px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed" style={{ background: m.role === "ai" ? C.surface : C.raised2, border: `1px solid ${m.isError ? "rgba(240,103,138,0.4)" : C.border}`, color: m.isError ? C.rose : C.text }}>
+                {m.text}
+              </div>
+            </div>
+          </div>
+        ))}
+        {thinking && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(124,111,240,0.15)" }}>
+              <Bot size={14} color={C.violetSoft} />
+            </div>
+            <div className="px-4 py-3 rounded-2xl text-sm flex items-center gap-2" style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.muted }}>
+              <Loader2 size={13} className="animate-spin" /> Thinking…
+            </div>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {messages.length < 2 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {SUGGESTED.map((s) => (
+            <button key={s} onClick={() => send(s)} className="tl-focus text-xs px-3 py-2 rounded-lg" style={{ background: C.raised, border: `1px solid ${C.border}`, color: C.muted }}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={{ background: C.raised, border: `1px solid ${C.border}` }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()}
+          placeholder="Ask about your candidates…"
+          disabled={thinking}
+          className="flex-1 bg-transparent outline-none text-sm"
+          style={{ color: C.text }}
+        />
+        <button onClick={() => send()} disabled={thinking} className="tl-focus w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.violet, opacity: thinking ? 0.6 : 1 }}>
+          <Send size={13} color="#fff" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== EMPTY / SETTINGS ============================== */
+
+function SettingsView() {
+  const [blind, setBlind] = useState(false);
+  return (
+    <div className="p-5 md:p-8 max-w-[720px] space-y-5">
+      <Card className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <EyeOff size={16} color={C.violetSoft} className="mt-0.5" />
+            <div>
+              <p className="text-sm font-medium" style={{ color: C.text }}>Blind screening</p>
+              <p className="text-xs mt-1 max-w-md" style={{ color: C.muted }}>Hide candidate names, photos and identifying details during initial AI evaluation to reduce bias.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setBlind(!blind)}
+            className="tl-focus w-11 h-6 rounded-full relative shrink-0 transition-colors"
+            style={{ background: blind ? C.violet : C.borderSoft }}
+          >
+            <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all" style={{ left: blind ? 22 : 2 }} />
+          </button>
+        </div>
+      </Card>
+      <Card className="p-6">
+        <h3 className="tl-display text-sm font-semibold mb-4" style={{ color: C.text }}>Scoring weights</h3>
+        <div className="space-y-4">
+          {[["Required skills", 35], ["Experience", 25], ["Responsibilities / domain", 15], ["Education / certifications", 10], ["Preferred skills", 10], ["Seniority", 5]].map(([l, v]) => (
+            <div key={l} className="flex items-center gap-4">
+              <span className="text-xs w-48" style={{ color: C.muted }}>{l}</span>
+              <BarMeter pct={v * 2} color={C.violet} />
+              <span className="tl-mono text-xs w-10 text-right" style={{ color: C.text }}>{v}%</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card className="p-6">
+        <h3 className="tl-display text-sm font-semibold mb-3" style={{ color: C.text }}>Compliance</h3>
+        <p className="text-xs leading-relaxed" style={{ color: C.muted }}>
+          TalentLens AI never uses race, ethnicity, religion, gender, sexual orientation, disability, age, marital status, or other protected characteristics in ranking, and does not infer them from names, photos, or addresses. All screening results include an audit trail with model version, timestamp, and any recruiter override.
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+/* ============================== ROOT APP ============================== */
+
+export default function App() {
+  const [view, setView] = useState("dashboard");
+  const [selected, setSelected] = useState(null);
+  const [activeJob, setActiveJob] = useState(JOBS[0]);
+  const [compareIds, setCompareIds] = useState([]);
+  const [search, setSearch] = useState("");
+  const [mobileNav, setMobileNav] = useState(false);
+  const [candidates, setCandidates] = useState(INITIAL_CANDIDATES);
+
+  const openCandidate = (c) => { setSelected(c); setView("profile"); };
+  const toggleCompare = (id) => setCompareIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 3 ? [...prev, id] : prev);
+
+  const addCandidates = (newOnes) => {
+    setCandidates((prev) => [...newOnes, ...prev]);
+  };
+
+  const updateCandidateStatus = (id, status) => {
+    setCandidates((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c)));
+    setSelected((s) => (s && s.id === id ? { ...s, status } : s));
+  };
+
+  const titles = {
+    dashboard: ["Dashboard", "Overview of your recruitment pipeline"],
+    jobs: ["Jobs", "Manage open roles and requirements"],
+    candidates: ["Candidates", `Screening pool for ${activeJob.title}`],
+    profile: [selected?.name || "Candidate", "AI-powered candidate profile"],
+    compare: ["Compare candidates", `${compareIds.length} candidates side-by-side`],
+    screening: ["Resume screening", "Upload resumes for live AI-powered analysis"],
+    interviews: ["Interviews", "Candidates in interview stages"],
+    analytics: ["Analytics", "Recruiting performance and AI impact"],
+    assistant: ["AI Assistant", "Ask questions about your candidate pool"],
+    settings: ["Settings", "Scoring weights, bias controls & compliance"],
+  };
+  const [title, subtitle] = titles[view] || titles.dashboard;
+
+  return (
+    <div className="tl-root flex w-full" style={{ height: "100vh", background: C.bg, color: C.text }}>
+      <FontImport />
+      {mobileNav && (
+        <div className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setMobileNav(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="h-full"><Sidebar view={view} setView={(v) => { setView(v); setMobileNav(false); }} /></div>
+        </div>
+      )}
+      <Sidebar view={view} setView={setView} />
+      <div className="flex-1 flex flex-col min-w-0">
+        <Topbar title={title} subtitle={subtitle} onScreen={() => setView("screening")} search={search} setSearch={setSearch} onOpenNav={() => setMobileNav(true)} />
+        <div className="flex-1 overflow-y-auto">
+          {view === "dashboard" && <Dashboard candidates={candidates} onOpenCandidate={openCandidate} setView={setView} />}
+          {view === "jobs" && <JobsView setActiveJob={setActiveJob} activeJob={activeJob} setView={setView} candidates={candidates} />}
+          {view === "candidates" && <CandidatesView candidates={candidates} onOpen={openCandidate} compareIds={compareIds} toggleCompare={toggleCompare} activeJob={activeJob} setView={setView} search={search} />}
+          {view === "profile" && selected && <CandidateProfile candidate={selected} onBack={() => setView("candidates")} job={activeJob} onUpdateStatus={updateCandidateStatus} />}
+          {view === "compare" && <CompareView ids={compareIds} candidates={candidates} onBack={() => setView("candidates")} onOpen={openCandidate} />}
+          {view === "screening" && <ScreeningView activeJob={activeJob} onDone={openCandidate} onAddCandidates={addCandidates} />}
+          {view === "interviews" && <InterviewsView candidates={candidates} onOpen={openCandidate} />}
+          {view === "analytics" && <AnalyticsView candidates={candidates} />}
+          {view === "assistant" && <AIAssistant candidates={candidates} activeJob={activeJob} />}
+          {view === "settings" && <SettingsView />}
+        </div>
+      </div>
+    </div>
+  );
+}
